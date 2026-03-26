@@ -58,7 +58,7 @@ If you set both `wled.post_delay_sec` and `wled.post_delay_path`, then after a s
 - wait `post_delay_sec` seconds
 - fire `post_delay_path` on the same `wled.base_url`
 
-If those keys are omitted, this feature is disabled.
+If the initial state endpoint is not configured (missing/empty `wled.path_*`) or the request fails, the delayed preset will not be fired.
 
 ## Optional endpoint paths
 
