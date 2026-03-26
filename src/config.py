@@ -23,9 +23,11 @@ class MatchConfig:
 @dataclass(frozen=True)
 class WledConfig:
     base_url: str
-    path_pre_alert: str
-    path_alert: str
-    path_end: str
+    path_pre_alert: str | None
+    path_alert: str | None
+    path_end: str | None
+    post_delay_sec: float | None
+    post_delay_path: str | None
 
     def resolve_url(self, path_suffix: str) -> str:
         base = self.base_url.rstrip("/") + "/"
@@ -67,6 +69,18 @@ def _get_number(section: dict[str, Any], key: str, default: float) -> float:
     return float(value)
 
 
+def _get_optional_str(section: dict[str, Any], key: str) -> str | None:
+    if key not in section:
+        return None
+    value = section.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"Invalid string for key: {key}")
+    value = value.strip()
+    return value or None
+
+
 def _load_cities(section: dict[str, Any]) -> list[str]:
     raw_cities = section.get("cities")
     if not isinstance(raw_cities, list):
@@ -105,9 +119,15 @@ def load_config(config_path: str) -> AppConfig:
         match=MatchConfig(cities=_load_cities(match_raw)),
         wled=WledConfig(
             base_url=_require_str(wled_raw, "base_url"),
-            path_pre_alert=_require_str(wled_raw, "path_pre_alert"),
-            path_alert=_require_str(wled_raw, "path_alert"),
-            path_end=_require_str(wled_raw, "path_end"),
+            path_pre_alert=_get_optional_str(wled_raw, "path_pre_alert"),
+            path_alert=_get_optional_str(wled_raw, "path_alert"),
+            path_end=_get_optional_str(wled_raw, "path_end"),
+            post_delay_sec=(
+                _get_number(wled_raw, "post_delay_sec", 1)
+                if "post_delay_sec" in wled_raw
+                else None
+            ),
+            post_delay_path=_get_optional_str(wled_raw, "post_delay_path"),
         ),
         runtime=RuntimeConfig(dry_run=bool(runtime_raw.get("dry_run", False))),
     )

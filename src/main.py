@@ -45,6 +45,22 @@ def run(config: AppConfig) -> None:
             else:
                 ok, msg = wled.trigger(state)
                 _log_result(state, f"{details} action={msg} ok={ok}")
+                if (
+                    ok
+                    and state in {EventState.PRE_ALERT, EventState.ALERT, EventState.END}
+                    and config.wled.post_delay_sec is not None
+                    and config.wled.post_delay_path
+                ):
+                    time.sleep(config.wled.post_delay_sec)
+                    post_ok, post_msg = wled.trigger_post_delay()
+                    _log_result(
+                        state,
+                        (
+                            f"{details} action=post_delay_trigger "
+                            f"delay_sec={config.wled.post_delay_sec} "
+                            f"result={post_msg} ok={post_ok}"
+                        ),
+                    )
             last_state = state
         else:
             _log_result(state, f"{details} action=unchanged")

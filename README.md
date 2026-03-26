@@ -42,10 +42,26 @@ match:
 
 wled:
   base_url: "http://192.168.1.50"
-  path_pre_alert: "/win&T=2&PL=1"
-  path_alert: "/win&T=2&PL=2"
-  path_end: "/win&T=2&PL=3"
+  #path_pre_alert: "/win&T=2&PL=1"
+  #path_alert: "/win&PL=0"
+  path_end: "/win&PL=3"
+  post_delay_sec: 20
+  post_delay_path: "/win&PL=2"
 
 runtime:
   dry_run: false
 ```
+
+## Optional delayed fallback preset
+
+If you set both `wled.post_delay_sec` and `wled.post_delay_path`, then after a successful `PRE_ALERT` / `ALERT` / `END` trigger:
+
+- wait `post_delay_sec` seconds
+- fire `post_delay_path` on the same `wled.base_url`
+
+If those keys are omitted, this feature is disabled.
+
+## Optional endpoint paths
+
+`wled.path_pre_alert`, `wled.path_alert`, and `wled.path_end` are optional.  
+If a path is missing (or empty), that state will be detected and logged, but no WLED request is sent for it.

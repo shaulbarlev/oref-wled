@@ -12,6 +12,9 @@ wled:
   path_pre_alert: "/win&T=2&PL=1"
   path_alert: "/win&T=2&PL=2"
   path_end: "/win&T=2&PL=3"
+  # Optional: after any trigger, wait X sec then fire Y endpoint
+  post_delay_sec: 20
+  post_delay_path: "/win&T=2&PL=10"
 
 runtime:
   dry_run: false
