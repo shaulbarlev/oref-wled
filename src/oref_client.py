@@ -21,5 +21,10 @@ class OrefClient:
 
         try:
             return response.json(), None
-        except json.JSONDecodeError as exc:
-            return None, f"parse_error: {exc}"
+        except (json.JSONDecodeError, ValueError):
+            # Oref responses can include UTF-8 BOM; decode with utf-8-sig.
+            try:
+                decoded = response.content.decode("utf-8-sig")
+                return json.loads(decoded), None
+            except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+                return None, f"parse_error: {exc}"
