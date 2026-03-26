@@ -13,13 +13,17 @@ class WledClient:
         self._session = requests.Session()
 
     def target_url_for_state(self, state: EventState) -> str | None:
+        path_suffix: str | None = None
         if state == EventState.PRE_ALERT:
-            return self.config.resolve_url(self.config.path_pre_alert)
-        if state == EventState.ALERT:
-            return self.config.resolve_url(self.config.path_alert)
-        if state == EventState.END:
-            return self.config.resolve_url(self.config.path_end)
-        return None
+            path_suffix = self.config.path_pre_alert
+        elif state == EventState.ALERT:
+            path_suffix = self.config.path_alert
+        elif state == EventState.END:
+            path_suffix = self.config.path_end
+
+        if not path_suffix:
+            return None
+        return self.config.resolve_url(path_suffix)
 
     def trigger(self, state: EventState) -> tuple[bool, str]:
         url = self.target_url_for_state(state)
