@@ -8,13 +8,12 @@ match:
     - "תל אביב - מרכז"
 
 wled:
-  base_url: "http://192.168.1.50"
-  path_pre_alert: "/win&T=2&PL=1"
-  path_alert: "/win&T=2&PL=2"
-  path_end: "/win&T=2&PL=3"
-  # Optional: after any trigger, wait X sec then fire Y endpoint
-  post_delay_sec: 20
-  post_delay_path: "/win&T=2&PL=10"
+  base_url: "http://192.168.1.195/"
+  #path_pre_alert: "/win&T=2&PL=1"
+  #path_alert: "/win&T=2&PL=2"
+  path_end: "/win&PL=3"
+  post_delay_sec: 60
+  post_delay_path: "/win&PL=2"
 
 runtime:
   dry_run: false
