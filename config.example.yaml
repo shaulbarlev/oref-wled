@@ -17,3 +17,9 @@ wled:
 
 runtime:
   dry_run: false
+
+sources:
+  tzevaadom:
+    # Real-time Tzeva Adom WebSocket stream. Usually fires 1-3s before
+    # alerts.json updates at the CDN edge. Set to false to disable.
+    enabled: true

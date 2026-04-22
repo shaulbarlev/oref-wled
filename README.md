@@ -1,6 +1,15 @@
 # oref-wled
 
-Poll the Oref alerts API, classify event state for configured cities, and trigger WLED endpoints per state transition.
+Poll the Oref alerts API and listen to the Tzeva Adom WebSocket in parallel, classify event state for configured cities, and trigger WLED endpoints per state transition.
+
+## Signal sources
+
+Two sources are merged; whichever reports an alert first fires WLED. Same-state re-triggers within 60s are deduped.
+
+- `oref_http`: polling of `https://www.oref.org.il/WarningMessages/alert/alerts.json`. Sends the same `Referer` / `X-Requested-With` / `Content-Type` headers as the `amitfin/oref_alert` HACS integration, plus `If-Modified-Since` conditional GETs so 304 responses skip reclassification.
+- `tzevaadom`: persistent WebSocket to `wss://ws.tzevaadom.co.il/socket?platform=WEB` with `Origin: https://www.tzevaadom.co.il` and a 45s heartbeat (mirrored from the HACS integration). Typically fires 1-3s before `alerts.json` refreshes at the Oref CDN edge, which is why this project now reacts faster than a 1s poll alone.
+
+The `amitfin/oref_alert` integration also uses a third source, Pushy MQTT (`mqtt-*.ioref.io:443`), which carries the same push channel the official Oref mobile app uses. It is not included here because it requires device registration, credential persistence, and a full MQTT client; it is tracked as a possible follow-up.
 
 ## Setup
 
@@ -49,6 +58,10 @@ wled:
 
 runtime:
   dry_run: false
+
+sources:
+  tzevaadom:
+    enabled: true
 ```
 
 ## Optional delayed fallback preset
