@@ -41,11 +41,22 @@ class RuntimeConfig:
 
 
 @dataclass(frozen=True)
+class TzevaadomConfig:
+    enabled: bool
+
+
+@dataclass(frozen=True)
+class SourcesConfig:
+    tzevaadom: TzevaadomConfig
+
+
+@dataclass(frozen=True)
 class AppConfig:
     oref: OrefConfig
     match: MatchConfig
     wled: WledConfig
     runtime: RuntimeConfig
+    sources: SourcesConfig
 
 
 def _require_section(payload: dict[str, Any], key: str) -> dict[str, Any]:
@@ -109,6 +120,12 @@ def load_config(config_path: str) -> AppConfig:
     runtime_raw = payload.get("runtime", {})
     if not isinstance(runtime_raw, dict):
         raise ValueError("runtime must be an object if provided")
+    sources_raw = payload.get("sources", {})
+    if not isinstance(sources_raw, dict):
+        raise ValueError("sources must be an object if provided")
+    tzevaadom_raw = sources_raw.get("tzevaadom", {})
+    if not isinstance(tzevaadom_raw, dict):
+        raise ValueError("sources.tzevaadom must be an object if provided")
 
     return AppConfig(
         oref=OrefConfig(
@@ -130,4 +147,9 @@ def load_config(config_path: str) -> AppConfig:
             post_delay_path=_get_optional_str(wled_raw, "post_delay_path"),
         ),
         runtime=RuntimeConfig(dry_run=bool(runtime_raw.get("dry_run", False))),
+        sources=SourcesConfig(
+            tzevaadom=TzevaadomConfig(
+                enabled=bool(tzevaadom_raw.get("enabled", True)),
+            ),
+        ),
     )

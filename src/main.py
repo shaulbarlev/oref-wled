@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import argparse
 import time
+from typing import Any
 
 from classifier import EventState, classify_event
 from config import AppConfig, load_config
+from dispatcher import TriggerDispatcher
 from oref_client import OrefClient
+from tzevaadom_client import TzevaadomClient
 from wled_client import WledClient
 
 
@@ -17,12 +20,57 @@ def _parse_args() -> argparse.Namespace:
 
 def _log_result(result_state: EventState, details: str) -> None:
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{timestamp}] state={result_state.value} {details}")
+    print(f"[{timestamp}] state={result_state.value} {details}", flush=True)
+
+
+def _log_info(message: str) -> None:
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}", flush=True)
+
+
+def _on_tzevaadom_alert(
+    dispatcher: TriggerDispatcher, source: str, info: dict[str, Any]
+) -> None:
+    details = (
+        f"reason=tzevaadom_ws cat=? title='' "
+        f"matched={info.get('matched_cities')} threat={info.get('threat')} "
+        f"notification_id={info.get('notification_id')}"
+    )
+    dispatcher.handle(EventState.ALERT, details, source)
 
 
 def run(config: AppConfig) -> None:
     oref = OrefClient(config.oref.url, config.oref.timeout_sec)
     wled = WledClient(config.wled, timeout_sec=config.oref.timeout_sec)
+    dispatcher = TriggerDispatcher(
+        wled=wled,
+        wled_config=config.wled,
+        runtime=config.runtime,
+        log=_log_result,
+    )
+
+    tz_client: TzevaadomClient | None = None
+    if config.sources.tzevaadom.enabled:
+        tz_client = TzevaadomClient(
+            cities=config.match.cities,
+            on_alert=lambda source, info: _on_tzevaadom_alert(dispatcher, source, info),
+            logger=_log_info,
+        )
+        tz_client.start()
+        _log_info("tzevaadom: source enabled")
+    else:
+        _log_info("tzevaadom: source disabled")
+
+    try:
+        _poll_loop(config, oref, dispatcher)
+    finally:
+        if tz_client is not None:
+            tz_client.stop()
+
+
+def _poll_loop(
+    config: AppConfig, oref: OrefClient, dispatcher: TriggerDispatcher
+) -> None:
     last_state: EventState | None = None
 
     while True:
@@ -30,7 +78,6 @@ def run(config: AppConfig) -> None:
         if fetch_error:
             state = EventState.NO_DATA
             details = f"reason={fetch_error}"
-            result = None
         else:
             result = classify_event(payload, config.match.cities)
             state = result.state
@@ -40,30 +87,13 @@ def run(config: AppConfig) -> None:
             )
 
         if state != last_state:
-            if config.runtime.dry_run:
-                _log_result(state, f"{details} action=dry_run")
+            if state in {EventState.PRE_ALERT, EventState.ALERT, EventState.END}:
+                dispatcher.handle(state, details, "oref_http")
             else:
-                ok, msg = wled.trigger(state)
-                _log_result(state, f"{details} action={msg} ok={ok}")
-                if (
-                    ok
-                    and state in {EventState.PRE_ALERT, EventState.ALERT, EventState.END}
-                    and config.wled.post_delay_sec is not None
-                    and config.wled.post_delay_path
-                ):
-                    time.sleep(config.wled.post_delay_sec)
-                    post_ok, post_msg = wled.trigger_post_delay()
-                    _log_result(
-                        state,
-                        (
-                            f"{details} action=post_delay_trigger "
-                            f"delay_sec={config.wled.post_delay_sec} "
-                            f"result={post_msg} ok={post_ok}"
-                        ),
-                    )
+                _log_result(state, f"{details} source=oref_http action=no_trigger_state")
             last_state = state
         else:
-            _log_result(state, f"{details} action=unchanged")
+            _log_result(state, f"{details} source=oref_http action=unchanged")
 
         time.sleep(config.oref.poll_interval_sec)
 
