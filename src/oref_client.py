@@ -59,11 +59,20 @@ class OrefClient:
     def _parse(
         response: requests.Response,
     ) -> tuple[dict[str, Any] | list[Any] | None, str | None]:
+        # Oref returns an empty body (sometimes just whitespace or a BOM) when
+        # there are no active alerts. Treat that as a normal "no alerts"
+        # reading rather than a parse error.
+        try:
+            decoded = response.content.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            decoded = ""
+        if not decoded.strip():
+            return {"data": []}, None
+
         try:
             return response.json(), None
         except (json.JSONDecodeError, ValueError):
             try:
-                decoded = response.content.decode("utf-8-sig")
                 return json.loads(decoded), None
-            except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            except (json.JSONDecodeError, ValueError) as exc:
                 return None, f"parse_error: {exc}"

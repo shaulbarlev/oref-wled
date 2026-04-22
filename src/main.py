@@ -92,8 +92,8 @@ def _poll_loop(
             else:
                 _log_result(state, f"{details} source=oref_http action=no_trigger_state")
             last_state = state
-        else:
-            _log_result(state, f"{details} source=oref_http action=unchanged")
+        # Steady-state polls (same non-trigger state as last tick) are silent.
+        # Trigger states never reach here because dispatcher.handle logs them.
 
         time.sleep(config.oref.poll_interval_sec)
 

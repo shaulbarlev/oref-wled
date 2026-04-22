@@ -70,9 +70,13 @@ def classify_event(payload: dict[str, Any] | list[Any] | None, configured_cities
     if not isinstance(payload, dict) or not payload:
         return ClassificationResult(EventState.NO_DATA, "payload_empty_or_invalid_object", [], None, "")
 
-    payload_cities = _normalize_city_list(payload.get("data"))
-    if payload_cities is None or not payload_cities:
+    raw_data = payload.get("data")
+    payload_cities = _normalize_city_list(raw_data)
+    if payload_cities is None:
         return ClassificationResult(EventState.NO_DATA, "missing_or_empty_data", [], None, _to_text(payload.get("title")))
+    if not payload_cities:
+        # Valid response shape with no cities = Oref reporting no active alerts.
+        return ClassificationResult(EventState.IDLE, "no_active_alerts", [], None, _to_text(payload.get("title")))
 
     matches = _find_matches(configured_cities, payload_cities)
     if not matches:
