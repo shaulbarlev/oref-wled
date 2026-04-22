@@ -84,16 +84,19 @@ class TzevaadomClient:
 
         self._ws = websocket.WebSocketApp(
             WS_URL,
-            header=[f"Origin: {ORIGIN_HEADER}"],
             on_open=on_open,
             on_message=on_message,
             on_error=on_error,
             on_close=on_close,
         )
-        # ping_interval mirrors the 45s heartbeat used by the HACS integration.
+        # websocket-client auto-derives Origin from the URL host, which the
+        # Tzeva Adom WAF rejects (expects www.tzevaadom.co.il, not
+        # ws.tzevaadom.co.il). Pass origin explicitly to override; a header=
+        # entry would be sent as a second Origin line and still be rejected.
         self._ws.run_forever(
             ping_interval=WS_HEARTBEAT_SEC,
             ping_timeout=WS_HEARTBEAT_SEC - 5,
+            origin=ORIGIN_HEADER,
         )
 
     def _handle_message(self, raw: str) -> None:
